@@ -48,7 +48,7 @@ Move to the places365 directory and execute the following commands:
 ```
 rm run_placesCNN_unified.py
 wget https://github.com/Sarabouh/Abnormality-detection/blob/master/scene%20recognition/run_placesCNN_unified.py && wget https://github.com/Sarabouh/Abnormality-detection/blob/master/scene%20recognition/shell.sh
-mkdir data && mkdir json
+mkdir data && mkdir json && mkdir txt
 touch json/labels.json
 ```
 Change the path in the shell.sh script with the dataset's path.
