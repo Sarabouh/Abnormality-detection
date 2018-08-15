@@ -152,68 +152,63 @@ category={}
 att=[]
 data[sys.argv[1]]=[] 
 c=-1 
-for f in glob.glob("data/*"):
-	pass
-	# load the test image
-	c+=1
-	#img_url = 'http://places.csail.mit.edu/demo/6.jpg'
-	# forward pass
-	if c<=count*0.35 or c>count*0.65:
-		continue
-	#os.system('wget %s -q -O test.jpg' % img_url)
+with open('txt/labels.txt', 'w') as words:
 
-	img = Image.open(f)
-	input_img = V(tf(img).unsqueeze(0))
+	for f in glob.glob("data/*"):
+		pass
+		# load the test image
+		c+=1
+		#img_url = 'http://places.csail.mit.edu/demo/6.jpg'
+		# forward pass
+		if c<=count*0.30 or c>count*0.70:
+			continue
+		#os.system('wget %s -q -O test.jpg' % img_url)
 
-	# forward pass
-	logit = model.forward(input_img)
-	h_x = F.softmax(logit, 1).data.squeeze()
-	probs, idx = h_x.sort(0, True)
-	probs = probs.numpy()
-	idx = idx.numpy()
+		img = Image.open(f)
+		input_img = V(tf(img).unsqueeze(0))
 
-	#print('RESULT ON ' + img_url)
+		# forward pass
+		logit = model.forward(input_img)
+		h_x = F.softmax(logit, 1).data.squeeze()
+		probs, idx = h_x.sort(0, True)
+		probs = probs.numpy()
+		idx = idx.numpy()
 
-	# output the IO prediction
-	io_image = np.mean(labels_IO[idx[:10]]) # vote for the indoor or outdoor
-	if io_image < 0.5:
-		print('--TYPE OF ENVIRONMENT: indoor')
-		io='indoor'
-	else:
-		print('--TYPE OF ENVIRONMENT: outdoor')
-		io='outdoor'
+		#print('RESULT ON ' + img_url)
 
-	# output the prediction of scene category
-	print('--SCENE CATEGORIES:')
-	for i in range(0, 5):
-		print('{:.3f} -> {}'.format(probs[i], classes[idx[i]]))
-		category[classes[idx[i]]]=probs[i]
+		# output the IO prediction
+		io_image = np.mean(labels_IO[idx[:10]]) # vote for the indoor or outdoor
+		if io_image < 0.5:
+			print('--TYPE OF ENVIRONMENT: indoor')
+			io='indoor'
+		else:
+			print('--TYPE OF ENVIRONMENT: outdoor')
+			io='outdoor'
+		words.write(io+' ')
+		# output the prediction of scene category
+		print('--SCENE CATEGORIES:')
+		for i in range(0, 2):
+			print('{:.3f} -> {}'.format(probs[i], classes[idx[i]]))
+			category[classes[idx[i]]]=probs[i]
+			words.write(classes[idx[i]]+' ')
 
-	# output the scene attributes
-	responses_attribute = W_attribute.dot(features_blobs[1])
-	idx_a = np.argsort(responses_attribute)
-	print('--SCENE ATTRIBUTES:')
-	print(', '.join([labels_attribute[idx_a[i]] for i in range(-1,-10,-1)]))
-	att=[labels_attribute[idx_a[i]] for i in range(-1,-10,-1)]
+		# output the scene attributes
+		responses_attribute = W_attribute.dot(features_blobs[1])
+		idx_a = np.argsort(responses_attribute)
+		print('--SCENE ATTRIBUTES:')
+		print(', '.join([labels_attribute[idx_a[i]] for i in range(-1,-10,-1)]))
+		att=[labels_attribute[idx_a[i]] for i in range(-1,-10,-1)]
+		for keyword in att :
+			words.write(keyword+' ')
 
 
-	# generate class activation mapping
-	#print('Class activation map is saved as cam.jpg')
-	#CAMs = returnCAM(features_blobs[0], weight_softmax, [idx[0]])
-
-	# render the CAM and output
-	#img = cv2.imread(f)
-	#height, width, _ = img.shape
-	#heatmap = cv2.applyColorMap(cv2.resize(CAMs[0],(width, height)), cv2.COLORMAP_JET)
-	#result = heatmap * 0.4 + img * 0.5
-	#cv2.imwrite('cam.jpg', result)
-	
-	data[sys.argv[1]].append({  
-		'id': f,
-		'category': str(category),
-		'IO': io,
-		'attributes':str(att)
-	})
+		data[sys.argv[1]].append({  
+			'id': f,
+			'category': str(category),
+			'IO': io,
+			'attributes':str(att)
+		})
+		words.write('\n')
 
 #write output to a json file 
 print("_________________________________________________________________________________________________________________")
