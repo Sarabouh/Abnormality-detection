@@ -1,4 +1,4 @@
-for t in ~/dtest/*      #insert the dataset's path
+for t in ~/backup/*      #insert the dataset's path
 do
 	for f in $t/*
 	do
@@ -8,7 +8,7 @@ do
 		IFS='/' read -ra NAME <<< "$f"
 		IFS='.' read -ra NAME1 <<< "${NAME[-1]}"
 		mv ~/places365/json/labels.json ~/places365/json/"${NAME1[0]}".json
-		echo ${NAME1[0]}
+		mv ~/places365/txt/labels.txt ~/places365/txt/"${NAME1[0]}".txt
 		touch  ~/places365/json/labels.json
 	done
 
