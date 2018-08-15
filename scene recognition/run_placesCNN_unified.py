@@ -31,106 +31,106 @@ while success:
 
 
 def load_labels():
-    # prepare all the labels
-    # scene category relevant
-    file_name_category = 'categories_places365.txt'
-    if not os.access(file_name_category, os.W_OK):
-        synset_url = 'https://raw.githubusercontent.com/csailvision/places365/master/categories_places365.txt'
-        os.system('wget ' + synset_url)
-    classes = list()
-    with open(file_name_category) as class_file:
-        for line in class_file:
-            classes.append(line.strip().split(' ')[0][3:])
-    classes = tuple(classes)
+	# prepare all the labels
+	# scene category relevant
+	file_name_category = 'categories_places365.txt'
+	if not os.access(file_name_category, os.W_OK):
+		synset_url = 'https://raw.githubusercontent.com/csailvision/places365/master/categories_places365.txt'
+		os.system('wget ' + synset_url)
+	classes = list()
+	with open(file_name_category) as class_file:
+		for line in class_file:
+			classes.append(line.strip().split(' ')[0][3:])
+	classes = tuple(classes)
 
-    # indoor and outdoor relevant
-    file_name_IO = 'IO_places365.txt'
-    if not os.access(file_name_IO, os.W_OK):
-        synset_url = 'https://raw.githubusercontent.com/csailvision/places365/master/IO_places365.txt'
-        os.system('wget ' + synset_url)
-    with open(file_name_IO) as f:
-        lines = f.readlines()
-        labels_IO = []
-        for line in lines:
-            items = line.rstrip().split()
-            labels_IO.append(int(items[-1]) -1) # 0 is indoor, 1 is outdoor
-    labels_IO = np.array(labels_IO)
+	# indoor and outdoor relevant
+	file_name_IO = 'IO_places365.txt'
+	if not os.access(file_name_IO, os.W_OK):
+		synset_url = 'https://raw.githubusercontent.com/csailvision/places365/master/IO_places365.txt'
+		os.system('wget ' + synset_url)
+	with open(file_name_IO) as f:
+		lines = f.readlines()
+		labels_IO = []
+		for line in lines:
+			items = line.rstrip().split()
+			labels_IO.append(int(items[-1]) -1) # 0 is indoor, 1 is outdoor
+	labels_IO = np.array(labels_IO)
 
-    # scene attribute relevant
-    file_name_attribute = 'labels_sunattribute.txt'
-    if not os.access(file_name_attribute, os.W_OK):
-        synset_url = 'https://raw.githubusercontent.com/csailvision/places365/master/labels_sunattribute.txt'
-        os.system('wget ' + synset_url)
-    with open(file_name_attribute) as f:
-        lines = f.readlines()
-        labels_attribute = [item.rstrip() for item in lines]
-    file_name_W = 'W_sceneattribute_wideresnet18.npy'
-    if not os.access(file_name_W, os.W_OK):
-        synset_url = 'http://places2.csail.mit.edu/models_places365/W_sceneattribute_wideresnet18.npy'
-        os.system('wget ' + synset_url)
-    W_attribute = np.load(file_name_W)
+	# scene attribute relevant
+	file_name_attribute = 'labels_sunattribute.txt'
+	if not os.access(file_name_attribute, os.W_OK):
+		synset_url = 'https://raw.githubusercontent.com/csailvision/places365/master/labels_sunattribute.txt'
+		os.system('wget ' + synset_url)
+	with open(file_name_attribute) as f:
+		lines = f.readlines()
+		labels_attribute = [item.rstrip() for item in lines]
+	file_name_W = 'W_sceneattribute_wideresnet18.npy'
+	if not os.access(file_name_W, os.W_OK):
+		synset_url = 'http://places2.csail.mit.edu/models_places365/W_sceneattribute_wideresnet18.npy'
+		os.system('wget ' + synset_url)
+	W_attribute = np.load(file_name_W)
 
-    return classes, labels_IO, labels_attribute, W_attribute
+	return classes, labels_IO, labels_attribute, W_attribute
 
 def hook_feature(module, input, output):
-    features_blobs.append(np.squeeze(output.data.cpu().numpy()))
+	features_blobs.append(np.squeeze(output.data.cpu().numpy()))
 
 def returnCAM(feature_conv, weight_softmax, class_idx):
-    # generate the class activation maps upsample to 256x256
-    size_upsample = (256, 256)
-    nc, h, w = feature_conv.shape
-    output_cam = []
-    for idx in class_idx:
-        cam = weight_softmax[class_idx].dot(feature_conv.reshape((nc, h*w)))
-        cam = cam.reshape(h, w)
-        cam = cam - np.min(cam)
-        cam_img = cam / np.max(cam)
-        cam_img = np.uint8(255 * cam_img)
-        output_cam.append(imresize(cam_img, size_upsample))
-    return output_cam
+	# generate the class activation maps upsample to 256x256
+	size_upsample = (256, 256)
+	nc, h, w = feature_conv.shape
+	output_cam = []
+	for idx in class_idx:
+		cam = weight_softmax[class_idx].dot(feature_conv.reshape((nc, h*w)))
+		cam = cam.reshape(h, w)
+		cam = cam - np.min(cam)
+		cam_img = cam / np.max(cam)
+		cam_img = np.uint8(255 * cam_img)
+		output_cam.append(imresize(cam_img, size_upsample))
+	return output_cam
 
 def returnTF():
 # load the image transformer
-    tf = trn.Compose([
-        trn.Resize((224,224)),
-        trn.ToTensor(),
-        trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-    return tf
+	tf = trn.Compose([
+		trn.Resize((224,224)),
+		trn.ToTensor(),
+		trn.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+	])
+	return tf
 
 
 def load_model():
-    # this model has a last conv feature map as 14x14
+	# this model has a last conv feature map as 14x14
 
-    model_file = 'wideresnet18_places365.pth.tar'
-    if not os.access(model_file, os.W_OK):
-        os.system('wget http://places2.csail.mit.edu/models_places365/' + model_file)
-        os.system('wget https://raw.githubusercontent.com/csailvision/places365/master/wideresnet.py')
+	model_file = 'wideresnet18_places365.pth.tar'
+	if not os.access(model_file, os.W_OK):
+		os.system('wget http://places2.csail.mit.edu/models_places365/' + model_file)
+		os.system('wget https://raw.githubusercontent.com/csailvision/places365/master/wideresnet.py')
 
-    import wideresnet
-    model = wideresnet.resnet18(num_classes=365)
-    checkpoint = torch.load(model_file, map_location=lambda storage, loc: storage)
-    state_dict = {str.replace(k,'module.',''): v for k,v in checkpoint['state_dict'].items()}
-    model.load_state_dict(state_dict)
-    model.eval()
+	import wideresnet
+	model = wideresnet.resnet18(num_classes=365)
+	checkpoint = torch.load(model_file, map_location=lambda storage, loc: storage)
+	state_dict = {str.replace(k,'module.',''): v for k,v in checkpoint['state_dict'].items()}
+	model.load_state_dict(state_dict)
+	model.eval()
 
 
 
-    # the following is deprecated, everything is migrated to python36
+	# the following is deprecated, everything is migrated to python36
 
-    ## if you encounter the UnicodeDecodeError when use python3 to load the model, add the following line will fix it. Thanks to @soravux
-    #from functools import partial
-    #import pickle
-    #pickle.load = partial(pickle.load, encoding="latin1")
-    #pickle.Unpickler = partial(pickle.Unpickler, encoding="latin1")
-    #model = torch.load(model_file, map_location=lambda storage, loc: storage, pickle_module=pickle)
+	## if you encounter the UnicodeDecodeError when use python3 to load the model, add the following line will fix it. Thanks to @soravux
+	#from functools import partial
+	#import pickle
+	#pickle.load = partial(pickle.load, encoding="latin1")
+	#pickle.Unpickler = partial(pickle.Unpickler, encoding="latin1")
+	#model = torch.load(model_file, map_location=lambda storage, loc: storage, pickle_module=pickle)
 
-    model.eval()
-    # hook the feature extractor
-    features_names = ['layer4','avgpool'] # this is the last conv layer of the resnet
-    for name in features_names:
-        model._modules.get(name).register_forward_hook(hook_feature)
-    return model
+	model.eval()
+	# hook the feature extractor
+	features_names = ['layer4','avgpool'] # this is the last conv layer of the resnet
+	for name in features_names:
+		model._modules.get(name).register_forward_hook(hook_feature)
+	return model
 
 
 # load the labels
@@ -150,12 +150,18 @@ weight_softmax[weight_softmax<0] = 0
 data = {}
 category={}
 att=[]
-data[sys.argv[1]]=[]  
+data[sys.argv[1]]=[] 
+c=-1 
 for f in glob.glob("data/*"):
 	pass
 	# load the test image
-	img_url = 'http://places.csail.mit.edu/demo/6.jpg'
-	os.system('wget %s -q -O test.jpg' % img_url)
+	c+=1
+	#img_url = 'http://places.csail.mit.edu/demo/6.jpg'
+	# forward pass
+	if c<=count*0.35 or c>count*0.65:
+		continue
+	#os.system('wget %s -q -O test.jpg' % img_url)
+
 	img = Image.open(f)
 	input_img = V(tf(img).unsqueeze(0))
 
@@ -171,17 +177,17 @@ for f in glob.glob("data/*"):
 	# output the IO prediction
 	io_image = np.mean(labels_IO[idx[:10]]) # vote for the indoor or outdoor
 	if io_image < 0.5:
-	    print('--TYPE OF ENVIRONMENT: indoor')
-	    io='indoor'
+		print('--TYPE OF ENVIRONMENT: indoor')
+		io='indoor'
 	else:
-	    print('--TYPE OF ENVIRONMENT: outdoor')
-	    io='outdoor'
+		print('--TYPE OF ENVIRONMENT: outdoor')
+		io='outdoor'
 
 	# output the prediction of scene category
 	print('--SCENE CATEGORIES:')
 	for i in range(0, 5):
-	    print('{:.3f} -> {}'.format(probs[i], classes[idx[i]]))
-	    category[classes[idx[i]]]=probs[i]
+		print('{:.3f} -> {}'.format(probs[i], classes[idx[i]]))
+		category[classes[idx[i]]]=probs[i]
 
 	# output the scene attributes
 	responses_attribute = W_attribute.dot(features_blobs[1])
@@ -203,14 +209,14 @@ for f in glob.glob("data/*"):
 	#cv2.imwrite('cam.jpg', result)
 	
 	data[sys.argv[1]].append({  
-	    'id': f,
-	    'category': str(category),
-	    'IO': io,
-	    'attributes':str(att)
+		'id': f,
+		'category': str(category),
+		'IO': io,
+		'attributes':str(att)
 	})
 
 #write output to a json file 
 print("_________________________________________________________________________________________________________________")
 with open('json/labels.json', 'a') as outfile:  
-    json.dump(data, outfile)
+	json.dump(data, outfile)
 print("_________________________________________________________________________________________________________________")
